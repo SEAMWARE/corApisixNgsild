@@ -12,8 +12,18 @@
 --       args: [ "--fdscJwks", "/opts/ngsild/jwks.json", "--fdscPolicies", "/opts/ngsild/policies.json",
 --               "--fdscIssuer", "http://verifier:3000", "--fdscOrganization", "did:web:provider" ]
 --
--- args are fdsc.so's own options (doc/authorization.md § 3.1 in coraine); the keys and the policies are FILES
--- here - nothing below the FFI line does network I/O. A route enables it with "ngsild-pep": {}.
+-- args are fdsc.so's own options (doc/authorization.md § 3.1 in coraine); the keys and the policies are files
+-- - nothing below the FFI line does network I/O - or fetched by the plugin, in Lua (cosockets, which do not
+-- block nginx), and read by fdsc.so as mem:jwks / mem:policies:
+--
+--       fetch:
+--         discovery: http://verifier:3000/services/data-service/.well-known/openid-configuration   (or jwks: <url>)
+--         pap:       http://odrl-pap:8080
+--         interval:  30
+--       args: [ "--fdscJwks", "mem:jwks", "--fdscPolicies", "mem:policies", "--fdscIssuer", "...", "--fdscRefresh", "2", ... ]
+--
+-- (--fdscIssuer is then required: fdsc.so reads no discovery document of its own). A route enables it with
+-- "ngsild-pep": {}.
 --
 -- Per request: the method, the path, the query string, Authorization, x-stripped-path, the body - one FFI call
 -- - and either the request goes on, or the answer is the broker's own: 401 / 403 / 503 with a ProblemDetails
@@ -25,6 +35,7 @@
 local core   = require("apisix.core")
 local plugin = require("apisix.plugin")
 local ffi    = require("ffi")
+local http   = require("resty.http")
 
 local plugin_name = "ngsild-pep"
 
@@ -40,6 +51,7 @@ typedef struct NgsildPepVerdict
 int ngsildPepInit(int argc, const char** argv, char* errorBuf, int errorBufSize);
 int ngsildPepDecide(const char* method, const char* path, const char* query, const char* authorization,
                     const char* strippedPath, const char* body, int bodyLen, NgsildPepVerdict* vP);
+int ngsildPepContentSet(const char* name, const char* text, int len);
 ]]
 
 local schema = { type = "object", properties = {} }
@@ -49,6 +61,15 @@ local attr_schema = {
   properties = {
     lib  = { type = "string" },
     args = { type = "array", items = { type = "string" } },
+    fetch = {
+      type       = "object",
+      properties = {
+        discovery = { type = "string" },
+        jwks      = { type = "string" },
+        pap       = { type = "string" },
+        interval  = { type = "integer", minimum = 1, default = 30 },
+      },
+    },
   },
   required   = { "lib", "args" },
 }
@@ -63,9 +84,72 @@ local _M = {
 local lib                                            -- the C library, once per worker
 local verdict                                        -- one result struct per worker, reused: no allocation per request
 local initError                                      -- why it could not start - every request is then a 503
+local fetchAll                                       -- below
 
 function _M.check_schema(conf)
   return core.schema.check(schema, conf)
+end
+
+--
+-- fetchAll - the keys (the discovery document's jwks_uri, or jwks) and the policies (every page of the PAP's
+-- /policy, as one array) into the C side, as mem:jwks and mem:policies. A fetch that fails keeps what is there
+--
+local function get(url)
+  local c = http.new()
+  c:set_timeout(5000)
+  local res, err = c:request_uri(url, { method = "GET" })
+  if not res then
+    return nil, url .. ": " .. tostring(err)
+  end
+  if res.status ~= 200 then
+    return nil, url .. ": " .. res.status
+  end
+  return res.body
+end
+
+fetchAll = function(premature, f)
+  if premature or lib == nil then
+    return
+  end
+
+  local jwksUrl = f.jwks
+  if f.discovery ~= nil then
+    local d, err = get(f.discovery)
+    local doc = d and core.json.decode(d)
+    if doc == nil or type(doc.jwks_uri) ~= "string" then
+      core.log.warn("ngsild-pep: the discovery document: ", err or "no jwks_uri")
+    else
+      jwksUrl = doc.jwks_uri
+    end
+  end
+  if jwksUrl ~= nil then
+    local b, err = get(jwksUrl)
+    if b then
+      lib.ngsildPepContentSet("jwks", b, #b)
+    else
+      core.log.warn("ngsild-pep: the keys: ", err)
+    end
+  end
+
+  if f.pap ~= nil then
+    local all = {}
+    for page = 0, 9999 do
+      local b, err = get(f.pap .. "/policy?page=" .. page .. "&pageSize=100")
+      local items = b and core.json.decode(b)
+      if type(items) ~= "table" then
+        core.log.warn("ngsild-pep: the policies: ", err or "not a JSON array")
+        return
+      end
+      if #items == 0 then
+        break
+      end
+      for _, it in ipairs(items) do
+        all[#all + 1] = it
+      end
+    end
+    local text = (#all > 0) and core.json.encode(all) or "[]"    -- cjson writes an empty table as {}
+    lib.ngsildPepContentSet("policies", text, #text)
+  end
 end
 
 --
@@ -106,6 +190,11 @@ function _M.init()
 
   lib     = l
   verdict = ffi.new("NgsildPepVerdict")
+
+  if attr.fetch ~= nil then
+    ngx.timer.at(0, fetchAll, attr.fetch)
+    ngx.timer.every(attr.fetch.interval or 30, fetchAll, attr.fetch)
+  end
   core.log.info("ngsild-pep: fdsc.so's decision in the gateway - ", table.concat(attr.args, " "))
 end
 

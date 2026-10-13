@@ -41,6 +41,7 @@ typedef struct NgsildPepVerdict
 } NgsildPepVerdict;
 
 extern void authRegister(AuthDriver* driverP);       // fdsc.c
+extern int  fdscFetchContentSet(const char* name, const char* text, int len);   // fdscFetchFile.c
 
 static AuthDriver  driver;
 static bool        initDone = false;
@@ -323,4 +324,16 @@ __attribute__((visibility("default"))) int ngsildPepDecide
   reqStrippedPath  = NULL;
   reqBody          = NULL;
   return vP->status;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// ngsildPepContentSet - a content the Lua side fetched, read by fdsc.so as "mem:<name>" (--fdscJwks mem:jwks,
+// --fdscPolicies mem:policies) at its next refresh; 0, or -1
+//
+__attribute__((visibility("default"))) int ngsildPepContentSet(const char* name, const char* text, int len)
+{
+  return fdscFetchContentSet(name, text, len);
 }
