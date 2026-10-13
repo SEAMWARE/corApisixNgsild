@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# APISIX 3.17.0 with ngsild-pep, host network, port 9080: the plugin (Lua) from ../lua, its library and its
+# configuration (keys, policies) from NGSILD_WORK, mounted at /opts/ngsild. NGSILD_ROUTES: the routes file.
+#
+services:
+  apisix:
+    image: apache/apisix:3.17.0-debian
+    network_mode: host
+    volumes:
+      - ${NGSILD_WORK}/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+      - ${NGSILD_ROUTES}:/usr/local/apisix/conf/apisix.yaml:ro
+      - ../lua/apisix/plugins:/opts/custom_plugins/apisix/plugins:ro
+      - ${NGSILD_WORK}:/opts/ngsild:ro

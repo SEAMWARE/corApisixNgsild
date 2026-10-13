@@ -1,0 +1,17 @@
+# APISIX standalone, ngsild-pep the one plugin; WORKERS nginx workers
+apisix:
+  node_listen: 9080
+  extra_lua_path: "/opts/custom_plugins/?.lua"
+  enable_admin: false
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml
+nginx_config:
+  worker_processes: @WORKERS@
+plugins:
+  - ngsild-pep
+plugin_attr:
+  ngsild-pep:
+    lib: /opts/ngsild/libngsildpep.so
+    args: [ @ARGS@ ]

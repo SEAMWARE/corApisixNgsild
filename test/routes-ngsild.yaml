@@ -1,0 +1,10 @@
+# Every path to the broker on 127.0.0.1:1027, through ngsild-pep
+routes:
+  - uri: /*
+    upstream:
+      nodes:
+        "127.0.0.1:1027": 1
+      type: roundrobin
+    plugins:
+      ngsild-pep: {}
+#END
