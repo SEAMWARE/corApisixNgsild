@@ -17,7 +17,7 @@ on:
 
 env:
   CORAINE_IMAGE_TAG: 0.6.0-dev-2026-10-14-7239cf37
-  CORAINE_REF: 7239cf37
+  CORAINE_REF: 7239cf37589d5b6db3d18fc6eacd072c5e8f1e84                 # the full SHA: actions/checkout takes no short one
 
 jobs:
   same-as-fdsc:
