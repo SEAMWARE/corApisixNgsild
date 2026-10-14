@@ -15,7 +15,7 @@ PARENT=$(cd "$HERE/.." && pwd)
 OUT=$HERE/dist/${IMAGE//[:\/]/-}
 mkdir -p "$OUT"
 
-docker run --rm -v "$PARENT:/src:ro" -v "$OUT:/out" "$IMAGE" bash -c '
+docker run --rm -e REPO="$(basename "$HERE")" -v "$PARENT:/src:ro" -v "$OUT:/out" "$IMAGE" bash -c '
   set -e
   apt-get update -qq > /dev/null && apt-get install -y -qq gcc make libssl-dev > /dev/null
   mkdir -p /build/coraine/src/lib /build/coraine/src/plugins/auth
@@ -23,10 +23,10 @@ docker run --rm -v "$PARENT:/src:ro" -v "$OUT:/out" "$IMAGE" bash -c '
   mkdir -p /build/corNgsild && cp /src/corNgsild/*.h /build/corNgsild/      # the LdOp bits: headers only
   cp -r /src/coraine/src/lib/plugin /build/coraine/src/lib/plugin
   cp -r /src/coraine/src/plugins/auth/fdsc /build/coraine/src/plugins/auth/fdsc
-  cp -r /src/apisix-ngsild /build/apisix-ngsild; rm -rf /build/apisix-ngsild/obj /build/apisix-ngsild/dist /build/apisix-ngsild/libngsildpep.so
+  cp -r "/src/$REPO" /build/pep; rm -rf /build/pep/obj /build/pep/dist /build/pep/libngsildpep.so
   for l in corJson corTree corAlloc corLog corBase; do make -s -C /build/$l BUILD=release obj/release/lib$l.a > /dev/null; done
-  make -s -C /build/apisix-ngsild COR_LIBS=/build > /dev/null
-  cp /build/apisix-ngsild/libngsildpep.so /out/
+  make -s -C /build/pep COR_LIBS=/build > /dev/null
+  cp /build/pep/libngsildpep.so /out/
 '
 echo "build-in-docker.sh: $OUT/libngsildpep.so"
 objdump -T "$OUT/libngsildpep.so" | grep -o "GLIBC_[0-9.]*" | sort -uV | tail -1

@@ -1,4 +1,4 @@
-# ngsild-pep - the NGSI-LD API's access decision in APISIX
+# corApisixNgsild - ngsild-pep, the NGSI-LD API's access decision in APISIX
 
 An APISIX plugin that decides access to an NGSI-LD broker's API in the gateway: the access token checked and
 the ODRL policies decided exactly as coraine's `--auth fdsc` decides them (the FIWARE Data Space Connector's
