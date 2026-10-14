@@ -1,0 +1,65 @@
+#
+# Build libngsildpep.so in Debian 12 (the APISIX image's base) and run test/sameAsFdsc.sh: coraine's
+# test/fdscDiff cases sent to APISIX with ngsild-pep and to coraine with --auth fdsc - the keys and policies
+# from files, then fetched from a verifier and an ODRL-PAP. No difference expected: the same code decides.
+#
+# ONE commit of coraine for everything: the fdsc.so sources the library is built from, the cases, and the
+# broker - its image, quay.io/seamware/coraine:<CORAINE_IMAGE_TAG>, whose tag names the commit. Moving the
+# tag moves all three.
+#
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CORAINE_IMAGE_TAG: 0.6.0-dev-2026-10-14-7239cf37
+  CORAINE_REF: 7239cf37
+
+jobs:
+  same-as-fdsc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out this plugin
+        uses: actions/checkout@v4
+        with:
+          path: stack/corApisixNgsild
+
+      - name: Check out coraine at the image's commit
+        uses: actions/checkout@v4
+        with:
+          repository: SEAMWARE/coraine
+          ref: ${{ env.CORAINE_REF }}
+          path: stack/coraine
+          fetch-depth: 0
+
+      #
+      # The cor libs build-in-docker.sh compiles in Debian 12 - their sources only, beside the plugin
+      #
+      - name: Check out the cor libs
+        working-directory: stack
+        run: |
+          for r in corJson corTree corAlloc corLog corBase corArgs corNgsild; do
+            git clone -q --depth 1 https://github.com/SEAMWARE/$r.git $r
+          done
+
+      - name: Build libngsildpep.so in Debian 12
+        working-directory: stack/corApisixNgsild
+        run: ./build-in-docker.sh
+
+      - name: The broker, from its image
+        run: |
+          docker pull -q quay.io/seamware/coraine:$CORAINE_IMAGE_TAG
+          echo "CORAINE_IMAGE=quay.io/seamware/coraine:$CORAINE_IMAGE_TAG" >> "$GITHUB_ENV"
+          echo "$GITHUB_WORKSPACE/stack/corApisixNgsild/test/ci" >> "$GITHUB_PATH"
+
+      - name: Same as fdsc.so - keys and policies from files
+        working-directory: stack/corApisixNgsild
+        run: ./test/sameAsFdsc.sh
+
+      - name: Same as fdsc.so - keys and policies fetched (verifier, ODRL-PAP)
+        working-directory: stack/corApisixNgsild
+        run: ./test/sameAsFdsc.sh --pap

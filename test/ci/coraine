@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+#
+# coraine - the broker from its published image, for test/sameAsFdsc.sh in CI: on PATH before any other
+# coraine, it runs CORAINE_IMAGE with the arguments it is given. Host networking (the ports the test uses),
+# /tmp shared (the keys and policies it writes there). exec: the test stops "the broker" by this PID, and
+# the docker client passes the signal on to the container
+#
+# Copyright 2026 Seamware
+# SPDX-License-Identifier: Apache-2.0
+#
+: "${CORAINE_IMAGE:?CORAINE_IMAGE: the coraine image, quay.io/seamware/coraine:<tag>}"
+exec docker run --rm --network host -v /tmp:/tmp --entrypoint coraine "$CORAINE_IMAGE" "$@"

@@ -9,6 +9,7 @@
 --   plugin_attr:
 --     ngsild-pep:
 --       lib:  /opts/ngsild/libngsildpep.so
+--       log_level: WARN                                  (fdsc.so's own lines, to stdout: ERR, WARN, INFO, VERBOSE)
 --       args: [ "--fdscJwks", "/opts/ngsild/jwks.json", "--fdscPolicies", "/opts/ngsild/policies.json",
 --               "--fdscIssuer", "http://verifier:3000", "--fdscOrganization", "did:web:provider" ]
 --
@@ -52,6 +53,7 @@ int ngsildPepInit(int argc, const char** argv, char* errorBuf, int errorBufSize)
 int ngsildPepDecide(const char* method, const char* path, const char* query, const char* authorization,
                     const char* strippedPath, const char* body, int bodyLen, NgsildPepVerdict* vP);
 int ngsildPepContentSet(const char* name, const char* text, int len);
+int ngsildPepLogInit(const char* level);
 ]]
 
 local schema = { type = "object", properties = {} }
@@ -61,6 +63,7 @@ local attr_schema = {
   properties = {
     lib  = { type = "string" },
     args = { type = "array", items = { type = "string" } },
+    log_level = { type = "string", enum = { "ERR", "WARN", "INFO", "VERBOSE" }, default = "WARN" },
     fetch = {
       type       = "object",
       properties = {
@@ -174,6 +177,8 @@ function _M.init()
     core.log.error(initError)
     return
   end
+
+  l.ngsildPepLogInit(attr.log_level or "WARN")      -- fdsc.so's own log lines, to the container's log
 
   local argv = ffi.new("const char*[?]", #attr.args)
   for i, a in ipairs(attr.args) do

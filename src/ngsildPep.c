@@ -24,6 +24,7 @@
 #include <strings.h>                                 // strcasecmp
 
 #include "corArgs/CorArg.h"                          // CorArg
+#include "corLog/corLogInit.h"                       // corLogInit
 #include "plugin/AuthDriver.h"                       // AuthDriver, AuthRequest, AuthAnswer, AuthVerdict
 
 
@@ -110,6 +111,20 @@ __attribute__((visibility("default"))) int ngsildPepInit(int argc, const char** 
   {
     snprintf(errorBuf, errorBufSize, "already initialised");
     return -1;
+  }
+
+  //
+  // --fdscNgsild decides on each entity a request reads or writes - its stored types, attributes and tenant,
+  // which the broker has and the gateway does not. Refused, not half done
+  //
+  for (int ix = 0; ix < argc; ix++)
+  {
+    if (strcmp(argv[ix], "--fdscNgsild") == 0)
+    {
+      snprintf(errorBuf, errorBufSize, "--fdscNgsild decides on each stored entity - a gateway does not have them: "
+               "coraine's --auth fdsc --fdscNgsild does it in the broker");
+      return -1;
+    }
   }
 
   memset(&driver, 0, sizeof(driver));
@@ -324,6 +339,18 @@ __attribute__((visibility("default"))) int ngsildPepDecide
   reqStrippedPath  = NULL;
   reqBody          = NULL;
   return vP->status;
+}
+
+
+
+// -----------------------------------------------------------------------------
+//
+// ngsildPepLogInit - fdsc.so's log lines (W:, I:, E:, X:) to the process's stdout - in the APISIX container,
+// the container's log, beside nginx's; level ERR, WARN (the default), INFO, VERBOSE. 0, or -1 (corLog's)
+//
+__attribute__((visibility("default"))) int ngsildPepLogInit(const char* level)
+{
+  return (corLogInit("ngsild-pep", NULL, true, (level != NULL) ? level : "WARN", NULL, false, false, false) == 0) ? 0 : -1;
 }
 
 
