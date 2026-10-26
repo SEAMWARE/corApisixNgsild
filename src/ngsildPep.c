@@ -350,7 +350,7 @@ __attribute__((visibility("default"))) int ngsildPepDecide
 //
 __attribute__((visibility("default"))) int ngsildPepLogInit(const char* level)
 {
-  return (corLogInit("ngsild-pep", NULL, true, (level != NULL) ? level : "WARN", NULL, false, false, false) == 0) ? 0 : -1;
+  return (corLogInit("ngsild-pep", NULL, true, (level != NULL) ? level : "WARN", NULL, false, false) == 0) ? 0 : -1;
 }
 
 
