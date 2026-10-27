@@ -6,7 +6,7 @@
 # class (fdscDiff.py). Expected: no difference at all - the same code decides.
 #
 # --pap: the keys and the policies from the network, as in a connector: the policies in an ODRL-PAP (odrl-pap
-# 1.7.1 on PostgreSQL, coraine's test/fdscDiff/docker-compose.yml), the keys from the verifier's discovery
+# 1.7.3 on PostgreSQL, coraine's test/fdscDiff/docker-compose.yml), the keys from the verifier's discovery
 # document - fetched by the plugin (fetch:, mem:jwks / mem:policies), and by coraine (--fdscDiscovery --fdscPap)
 #
 # Needs: docker (compose), python3, curl, coraine installed, dist/debian-12/libngsildpep.so
