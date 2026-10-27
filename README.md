@@ -12,7 +12,7 @@ request. Any NGSI-LD broker can sit behind it.
 | `src/fdscFetchFile.c` | fdsc.so's fetch, files only: nothing below the FFI line does network I/O (a blocking call stalls every request of an nginx worker) |
 | `lua/apisix/plugins/ngsild-pep.lua` | the plugin: method, path, query, `Authorization`, `x-stripped-path`, body - one FFI call - let through, or the broker's own 401 / 403 / 503 |
 | `build-in-docker.sh` | the library built for the gateway's system (default `debian:12`, which `apache/apisix:3.17.0-debian` is) |
-| `test/sameAsFdsc.sh [--pap]` | coraine's `test/fdscDiff` cases against APISIX + ngsild-pep and coraine `--auth fdsc`: 64 cases, 0 differences (2026-10-13) - with the keys and policies from files, and (`--pap`) fetched from the verifier's discovery document and an ODRL-PAP, by the plugin and by coraine |
+| `test/sameAsFdsc.sh [--pap]` | coraine's `test/fdscDiff` cases against APISIX + ngsild-pep and coraine `--auth fdsc`: 64 cases, 0 differences - the cases, the `fdsc.so` sources and the broker of coraine `7239cf37` (2026-10-14), which CI pins (`CORAINE_REF`; coraine main has more cases since) - with the keys and policies from files, and (`--pap`) fetched from the verifier's discovery document and an ODRL-PAP, by the plugin and by coraine |
 
 ## Configuration
 
